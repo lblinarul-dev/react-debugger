@@ -1,6 +1,7 @@
 """
 Services for RSS feed ingestion, LLM classification, image generation, and Telegram sending.
 """
+import asyncio
 import feedparser
 import httpx
 from openai import OpenAI
