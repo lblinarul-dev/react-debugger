@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     telegram_bot_token: Optional[str] = None
     telegram_channel_chat_id: str = "2025726822"  # From n8n workflow
     
+    # ImgBB (for image hosting)
+    imgbb_api_key: Optional[str] = None
+    
     # RSS Feeds (from n8n workflow)
     rss_feeds: list = [
         {"feed_url": "https://www.ansa.it/sito/ansait_rss.xml", "rss_title": "ANSA"},
