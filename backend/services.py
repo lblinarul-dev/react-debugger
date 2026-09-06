@@ -326,16 +326,53 @@ Return only the prompt text."""
             
             image_url = image_response.data[0].url
             
-            # Download and upload to imgbb (as n8n does)
-            async def upload_to_imgbb(image_data: bytes) -> Optional[str]:
-                # Note: In production, you'd want proper async handling
-                # For now, we'll use the direct DALL-E URL
-                return image_url
+            # Download the image from DALL-E
+            import httpx
+            image_data = httpx.get(image_url).content
             
+            # Upload to imgbb (matching n8n workflow)
+            imgbb_url = asyncio.run(self._upload_to_imgbb(image_data))
+            if imgbb_url:
+                return imgbb_url
+            
+            # Fallback to DALL-E URL if imgbb upload fails
             return image_url
             
         except Exception as e:
             logger.error(f"Error generating image: {e}")
+            return None
+    
+    async def _upload_to_imgbb(self, image_data: bytes) -> Optional[str]:
+        """Upload image data to imgbb and return the display URL."""
+        imgbb_api_key = settings.imgbb_api_key
+        if not imgbb_api_key:
+            logger.warning("IMG_BB_API_KEY not set, skipping imgbb upload")
+            return None
+        
+        try:
+            import base64
+            encoded_image = base64.b64encode(image_data).decode('utf-8')
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.imgbb.com/1/upload",
+                    params={"key": imgbb_api_key},
+                    data={"image": encoded_image},
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                result = response.json()
+                
+                if result.get("success") and result.get("data"):
+                    display_url = result["data"]["display_url"]
+                    logger.info(f"Image uploaded to imgbb: {display_url}")
+                    return display_url
+                else:
+                    logger.error(f"imgbb upload failed: {result}")
+                    return None
+                    
+        except Exception as e:
+            logger.error(f"Error uploading to imgbb: {e}")
             return None
     
     def build_caption(self, title: str, description: str) -> str:
